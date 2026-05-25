@@ -1,5 +1,5 @@
 ---
-name: agentic-code
+name: MY-agentic-code
 description: >
   Enforces agent-ready code architecture for any software development project.
   Use this skill at the start of EVERY development task — whether building from scratch,

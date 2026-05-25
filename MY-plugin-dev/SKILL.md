@@ -1,5 +1,5 @@
 ---
-name: plugin-dev
+name: MY-plugin-dev
 description: >
   Fullstack plugin/extension developer specializing in Chrome Extensions (Manifest V3)
   and VS Code Extensions. Use this skill whenever the user wants to: build a Chrome or
@@ -14,11 +14,11 @@ description: >
 
 ## ⚠️ Read First — Agentic Code Standards
 
-**Before writing any code**, read and apply the `agentic-code` skill.
+**Before writing any code**, read and apply the `MY-agentic-code` skill.
 It defines the mandatory tracking files, code quality rules, and documentation
 standards that apply to ALL development work in this project.
 
-> Load skill: `agentic-code`
+> Load skill: `MY-agentic-code`
 
 ---
 
@@ -29,7 +29,7 @@ This skill covers only plugin/extension-specific knowledge:
 - Platform-specific APIs and patterns
 - Build setup and packaging
 
-Everything else (tracking files, naming, comments, error handling) is in `agentic-code`.
+Everything else (tracking files, naming, comments, error handling) is in `MY-agentic-code`.
 
 ---
 
