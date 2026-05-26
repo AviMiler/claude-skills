@@ -12,138 +12,157 @@ description: >
 
 # Plugin Developer Skill
 
-## ⚠️ Read First — Agentic Code Standards
+## ⚠️ עקרונות יסוד — לא לדלג
 
-**Before writing any code**, read and apply the `MY-agentic-code` skill.
-It defines the mandatory tracking files, code quality rules, and documentation
-standards that apply to ALL development work in this project.
+**לפני שכותבים שורת קוד אחת**, חייב להבין את הגישה של המשתמש הזה:
 
-> Load skill: `MY-agentic-code`
+### ❌ אסור לחלוטין
+- NPM / package.json (להתקנת חבילות)
+- Webpack / Vite / esbuild / כל build tool
+- TypeScript (אלא אם המשתמש ביקש במפורש)
+- `node_modules` תיקייה
+- dist / build output תיקיות
+- ייבוא חבילות חיצוניות (lodash, axios וכד')
 
----
-
-## Scope of This Skill
-
-This skill covers only plugin/extension-specific knowledge:
-- Project structure for Chrome and VS Code extensions
-- Platform-specific APIs and patterns
-- Build setup and packaging
-
-Everything else (tracking files, naming, comments, error handling) is in `MY-agentic-code`.
-
----
-
-## Confirm Scope First
-
-Before scaffolding, confirm:
-1. Chrome extension, VS Code extension, or both?
-2. Does it need a UI? (popup, sidebar, webview panel)
-3. Target: new project or existing?
+### ✅ חובה תמיד
+- **Vanilla JS בלבד** — קוד שרץ ישירות בדפדפן / VS Code ללא קומפילציה
+- **כמה שפחות קבצים** — עדיף 3 קבצים על פני 8
+- **כל קובץ עד 500 שורות** — אם עולה על זה, לפצל לוגית
+- **מבנה שאפשר לשלוח במייל** — כמה קבצי JS שמים בתיקייה ומסיימים
+- **אין תיקיות src/ dist/ shared/ nested** — שטוח ככל האפשר
 
 ---
 
-## Project Structure
+## אמת מה נדרש לפני שמתחילים
 
-### Chrome Extension (Manifest V3)
+1. Chrome extension, VS Code extension, או שניהם?
+2. יש צורך ב-UI? (popup, sidebar, panel)
+3. פרויקט חדש או הוספת קוד לקיים?
 
+---
+
+## מבנה קבצים — Chrome Extension (Manifest V3)
+
+**מבנה רגיל (רוב המקרים):**
 ```
 my-extension/
 ├── manifest.json
-├── src/
-│   ├── background/
-│   │   └── index.js          # Service worker entry point
-│   ├── content/
-│   │   └── index.js          # Content script entry point
-│   ├── popup/
-│   │   ├── index.html
-│   │   ├── popup.js
-│   │   └── popup.css
-│   └── shared/
-│       ├── messages.js       # All message definitions
-│       ├── storage.js        # All chrome.storage access
-│       └── constants.js
-├── public/icons/
-├── dist/                     # Build output (gitignored)
-├── AGENT_CONTEXT.md
-├── PROJECT_MAP.md
-├── ARCHITECTURE.md
-├── CHANGELOG.md
-├── DEPENDENCIES.md
-└── package.json
+├── background.js
+├── content.js
+├── popup.html
+├── popup.js
+└── icons/
 ```
 
-### VS Code Extension
-
+**מבנה גדול יותר (רק אם חובה):**
 ```
-my-vscode-extension/
-├── package.json              # Extension manifest
-├── src/
-│   ├── extension.js          # activate() / deactivate()
-│   ├── commands/
-│   │   └── [commandName].js  # One file per command
-│   ├── providers/
-│   │   └── [providerName].js # TreeDataProvider, CodeLensProvider, etc.
-│   ├── webview/
-│   │   └── [panelName].js
-│   └── shared/
-│       ├── config.js         # Workspace configuration access
-│       ├── logger.js         # Output channel wrapper
-│       └── constants.js
-├── dist/                     # Compiled output (gitignored)
-├── AGENT_CONTEXT.md
-├── PROJECT_MAP.md
-├── ARCHITECTURE.md
-├── CHANGELOG.md
-├── DEPENDENCIES.md
-└── .vscodeignore
+my-extension/
+├── manifest.json
+├── background.js
+├── content.js
+├── popup.html
+├── popup.js
+├── popup.css
+└── icons/
+```
+
+**אין** `src/`, **אין** `dist/`, **אין** `package.json`.  
+manifest.json + קבצי JS → גורר לכרום → עובד.
+
+---
+
+## מבנה קבצים — VS Code Extension
+
+**מבנה רגיל:**
+```
+my-extension/
+├── package.json        ← רק זה (manifest של VS Code, לא NPM install)
+├── extension.js        ← activate() + כל הלוגיקה הראשית
+└── panel.html          ← אם יש webview
+```
+
+**מבנה גדול יותר (רק אם חובה):**
+```
+my-extension/
+├── package.json
+├── extension.js
+├── commands.js
+├── panel.html
+└── panel.js
+```
+
+> package.json ב-VS Code הוא **manifest בלבד** — לא `npm install`.  
+> הקוד רץ ישירות ב-VS Code runtime ללא build.
+
+---
+
+## כללי כתיבת קוד
+
+### פיצול קבצים — מתי ואיך
+- קובץ שמגיע ל-**400+ שורות** → לפצל לפי אחריות (UI בנפרד, לוגיקה בנפרד)
+- **לא** ליצור קובץ חדש רק כדי לארגן — רק אם הקובץ הנוכחי גדל מדי
+- עדיף פונקציה ארוכה עם הערות טובות על פני 5 קבצים קטנים
+
+### תקשורת בין קבצים — Chrome
+```js
+// שליחה (popup.js / content.js)
+chrome.runtime.sendMessage({ type: 'DO_THING', data: payload }, response => { ... });
+
+// קבלה (background.js)
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'DO_THING') { ... sendResponse({ ok: true }); }
+  return true; // חובה אם sendResponse אסינכרוני
+});
+```
+
+### VS Code — כל ה-disposables ל-subscriptions
+```js
+function activate(context) {
+  const cmd = vscode.commands.registerCommand('ext.hello', () => { ... });
+  context.subscriptions.push(cmd);
+}
 ```
 
 ---
 
-## Chrome Extension Patterns
+## Chrome MV3 — כללים קריטיים
 
-For full Chrome MV3 reference:
-→ Read `references/chrome-extension.md`
-
-**Key rules:**
-- Always use Manifest V3 (not V2)
-- Service worker has no DOM — never assume `window` or `document`
-- Use `chrome.storage.local` (not `localStorage`) for all persistence
-- All cross-context communication through messages in `shared/messages.js`
-- Content scripts run in isolated world — use `window.postMessage` to reach page JS
-- Guard content scripts against double-injection
-
----
-
-## VS Code Extension Patterns
-
-For full VS Code API reference:
-→ Read `references/vscode-extension.md`
-
-**Key rules:**
-- Every `Disposable` returned by VS Code APIs must be pushed to `context.subscriptions`
-- One file per command in `src/commands/`
-- All config access through `shared/config.js` wrapper — never call `getConfiguration()` directly in feature code
-- All logging through `shared/logger.js` — one Output Channel for the whole extension
-- Webview content must use `getNonce()` and strict CSP
-- `activationEvents: []` in package.json lets VS Code auto-detect — prefer this
-
----
-
-## Plugin-Specific ARCHITECTURE.md Addition
-
-When writing `ARCHITECTURE.md` for a plugin project, include this section:
-
-```markdown
-## Extension Architecture
-
-### Context Boundaries
-| Context | Has DOM | Has chrome.* | Can message |
-|---|---|---|---|
-| Background (service worker) | ❌ | ✅ full | → content, popup |
-| Content script | ✅ (host page) | ✅ limited | → background |
-| Popup | ✅ | ✅ limited | → background |
-
-### Message Flow
-[e.g., User clicks popup → popup sends GET_DATA → background reads storage → returns DATA_RESPONSE]
+- Service worker (background.js) — **אין DOM**, אין `window`, אין `document`
+- שמירת נתונים: `chrome.storage.local` בלבד (לא `localStorage`)
+- Content script: רץ בעמוד אבל בסביבה מבודדת — `window.postMessage` לתקשורת עם JS של העמוד
+- להגן מפני double-injection בcontent script:
+```js
+if (window.__myExtLoaded) return;
+window.__myExtLoaded = true;
 ```
+
+---
+
+## VS Code — כללים קריטיים
+
+- `package.json` חייב: `"main": "./extension.js"` + `"engines": { "vscode": "^1.70.0" }`
+- Webview חייב nonce + CSP:
+```js
+const nonce = Math.random().toString(36).slice(2);
+// בHTML: <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}';">
+```
+- `activationEvents: ["onCommand:ext.myCommand"]` או `"*"` לפיתוח
+
+---
+
+## Architecture Context — לתוך הקובץ הראשי
+
+כשיש יותר מ-2 קבצים, לשים בראש extension.js / background.js הערה:
+
+```js
+/**
+ * ARCHITECTURE
+ * background.js  — service worker, לוגיקה מרכזית, chrome.storage
+ * content.js     — injection לעמוד, DOM manipulation
+ * popup.js       — UI של ה-popup, מדבר עם background דרך messages
+ *
+ * FLOW: popup → sendMessage → background → storage / tab action
+ */
+```
+
+אין קובץ ARCHITECTURE.md נפרד — ההערה נמצאת בקוד עצמו.
