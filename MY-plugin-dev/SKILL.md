@@ -37,9 +37,8 @@ Everything else (tracking files, naming, comments, error handling) is in `MY-age
 
 Before scaffolding, confirm:
 1. Chrome extension, VS Code extension, or both?
-2. TypeScript (default) or JavaScript?
-3. Does it need a UI? (popup, sidebar, webview panel)
-4. Target: new project or existing?
+2. Does it need a UI? (popup, sidebar, webview panel)
+3. Target: new project or existing?
 
 ---
 
@@ -52,17 +51,17 @@ my-extension/
 ├── manifest.json
 ├── src/
 │   ├── background/
-│   │   └── index.ts          # Service worker entry point
+│   │   └── index.js          # Service worker entry point
 │   ├── content/
-│   │   └── index.ts          # Content script entry point
+│   │   └── index.js          # Content script entry point
 │   ├── popup/
 │   │   ├── index.html
-│   │   ├── popup.ts
+│   │   ├── popup.js
 │   │   └── popup.css
 │   └── shared/
-│       ├── messages.ts       # All message types (typed)
-│       ├── storage.ts        # All chrome.storage access
-│       └── constants.ts
+│       ├── messages.js       # All message definitions
+│       ├── storage.js        # All chrome.storage access
+│       └── constants.js
 ├── public/icons/
 ├── dist/                     # Build output (gitignored)
 ├── AGENT_CONTEXT.md
@@ -70,9 +69,7 @@ my-extension/
 ├── ARCHITECTURE.md
 ├── CHANGELOG.md
 ├── DEPENDENCIES.md
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
+└── package.json
 ```
 
 ### VS Code Extension
@@ -81,25 +78,24 @@ my-extension/
 my-vscode-extension/
 ├── package.json              # Extension manifest
 ├── src/
-│   ├── extension.ts          # activate() / deactivate()
+│   ├── extension.js          # activate() / deactivate()
 │   ├── commands/
-│   │   └── [commandName].ts  # One file per command
+│   │   └── [commandName].js  # One file per command
 │   ├── providers/
-│   │   └── [providerName].ts # TreeDataProvider, CodeLensProvider, etc.
+│   │   └── [providerName].js # TreeDataProvider, CodeLensProvider, etc.
 │   ├── webview/
-│   │   └── [panelName].ts
+│   │   └── [panelName].js
 │   └── shared/
-│       ├── config.ts         # Workspace configuration access
-│       ├── logger.ts         # Output channel wrapper
-│       └── constants.ts
-├── out/                      # Compiled output (gitignored)
+│       ├── config.js         # Workspace configuration access
+│       ├── logger.js         # Output channel wrapper
+│       └── constants.js
+├── dist/                     # Compiled output (gitignored)
 ├── AGENT_CONTEXT.md
 ├── PROJECT_MAP.md
 ├── ARCHITECTURE.md
 ├── CHANGELOG.md
 ├── DEPENDENCIES.md
-├── .vscodeignore
-└── tsconfig.json
+└── .vscodeignore
 ```
 
 ---
@@ -113,7 +109,7 @@ For full Chrome MV3 reference:
 - Always use Manifest V3 (not V2)
 - Service worker has no DOM — never assume `window` or `document`
 - Use `chrome.storage.local` (not `localStorage`) for all persistence
-- All cross-context communication through typed messages in `shared/messages.ts`
+- All cross-context communication through messages in `shared/messages.js`
 - Content scripts run in isolated world — use `window.postMessage` to reach page JS
 - Guard content scripts against double-injection
 
@@ -127,8 +123,8 @@ For full VS Code API reference:
 **Key rules:**
 - Every `Disposable` returned by VS Code APIs must be pushed to `context.subscriptions`
 - One file per command in `src/commands/`
-- All config access through `shared/config.ts` wrapper — never call `getConfiguration()` directly in feature code
-- All logging through `shared/logger.ts` — one Output Channel for the whole extension
+- All config access through `shared/config.js` wrapper — never call `getConfiguration()` directly in feature code
+- All logging through `shared/logger.js` — one Output Channel for the whole extension
 - Webview content must use `getNonce()` and strict CSP
 - `activationEvents: []` in package.json lets VS Code auto-detect — prefer this
 
