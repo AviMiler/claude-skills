@@ -1,5 +1,5 @@
 ---
-name: MY-plugin-dev
+name: plugin-dev
 description: >
   Fullstack plugin/extension developer specializing in Chrome Extensions (Manifest V3)
   and VS Code Extensions. Use this skill whenever the user wants to: build a Chrome or
