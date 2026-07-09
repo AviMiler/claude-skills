@@ -1,97 +1,134 @@
 ---
 name: enforcing-coding-workflow
 description: >
-  Enforces a mandatory 4-stage sequence (validate, build, document, git) for
-  every coding task in every project — new features, bug fixes, refactors.
-  Applies whenever a request will result in code changes, before any code is
-  written. Defines the stage order, what each stage must produce, and how to
-  handle failures without skipping ahead. Complements MY-agentic-code (which
-  defines what good code and docs look like) — the document stage follows
-  its templates. Use when the user asks to build, add, implement, fix, or
-  refactor code, regardless of language or platform.
+  Enforces a mandatory 5-stage sequence (spec-validate → build → verify → 
+  document → git) for every coding task in every project. Spec-driven approach:
+  validates all work against project spec, updates spec during development as
+  requirements emerge, asks user to confirm new requirements before adding to
+  spec, and verifies all work aligns with spec without regression. Applies
+  whenever a request results in code changes. Use when the user asks to build,
+  add, implement, fix, or refactor code.
 ---
 
 # Coding Workflow
 
-⚠️ Read First — also load `anthropic-skills:agentic-code` for the tracking-file templates and
-code quality rules used in Stage 3.
+⚠️ Read First — also load `anthropic-skills:agentic-code` for tracking-file
+templates and code quality rules used in Stage 4.
 
 ## Core Rule
 
-Every coding task goes through all 4 stages, in order, every time. Never jump
-straight to code, skip documentation because a change "felt small," or skip
-git because "the user will commit later" — unless the user explicitly says so
-for this specific task.
+Every coding task goes through all 5 stages, in order, every time. **The spec
+is the single source of truth** — all work must align with it, and the spec
+must be kept up-to-date as requirements emerge. Never skip a stage or the spec
+check.
 
 ```
-1. VALIDATE  →  2. BUILD  →  3. DOCUMENT  →  4. GIT
+1. SPEC-VALIDATE  →  2. BUILD  →  3. VERIFY  →  4. DOCUMENT  →  5. GIT
 ```
 
-If a stage fails, stop and resolve it before moving on — never skip forward
-silently.
+If a stage fails, stop and resolve it before moving on. The spec may change
+during development (Stage 2); when it does, return to Stage 1 to re-validate.
 
 ## When This Applies
 
 Any request that changes code: features, bug fixes, refactors, config or
-dependency changes — including ones that sound small ("rename this
-variable," "fix this typo").
+dependency changes — including ones that sound small ("rename this variable,"
+"fix this typo").
 
 Does NOT apply to: pure Q&A, read-only code review, exploration, or
 non-code tasks (standalone doc writing, etc.).
 
-## The 4 Stages
+## The 5 Stages
 
-### Stage 1 — Validate
+### Stage 1 — Spec-Validate
 
-Before writing code, check the request against the project's spec and
-current state:
-- If a spec file exists, read it and confirm the request doesn't conflict.
-- If not, treat existing docs (README, AGENT_CONTEXT.md, ARCHITECTURE.md) as
-  the de facto spec.
-- Minor gaps → note them, proceed with a stated assumption.
-- Serious conflicts (contradicts an architectural decision, breaks a stated
-  constraint, duplicates existing functionality) → stop and ask the user.
+**The spec is authoritative.** Check the request against it:
 
-State what will be built and any assumptions made before moving to Stage 2.
+- If a spec file exists (spec.md, requirements.md, ARCHITECTURE.md), read it
+  fully before responding. This is mandatory.
+- If no spec file exists, create one (use existing docs like README,
+  AGENT_CONTEXT.md, ARCHITECTURE.md as the de facto spec, then write it down).
+- Confirm the request aligns with the spec. If unclear:
+  - **Ask the user:** "Does this requirement belong in the spec as a permanent
+    requirement, or is it a one-time exception?"
+  - If permanent → update the spec document with the user's confirmation
+  - If exception → proceed with a clear note that this breaks the spec
+  - If conflict → stop and ask how to resolve
+
+**Output of Stage 1:** State what will be built, which spec requirements
+apply, and any new requirements that need spec approval before moving to
+Stage 2.
 
 ### Stage 2 — Build
 
-- Follow the code quality rules from `anthropic-skills:agentic-code` (file size, naming,
-  typing, error handling, no dead abstractions).
+Implement the change:
+
+- Follow the code quality rules from `anthropic-skills:agentic-code` (file size,
+  naming, typing, error handling, no dead abstractions).
 - Keep the change scoped to what Stage 1 validated — no drive-by refactors.
+- **If new requirements emerge during build:**
+  - Pause and ask the user: "A new requirement came up: [X]. Should this be
+    added to the spec as a permanent requirement?"
+  - If yes → update the spec, then return to Stage 1 to re-validate against
+    the updated spec
+  - If no → proceed with a note that this is temporary/one-off
 - Track every file created, modified, or deleted for Stage 3.
 
-### Stage 3 — Document
+**Output of Stage 2:** Working code that matches the spec, plus a list of
+changed files.
 
-Update the project's tracking files per `anthropic-skills:agentic-code`'s templates:
+### Stage 3 — Verify
+
+**Regression check:** Ensure the build doesn't break existing spec requirements:
+
+- For each requirement in the spec, verify:
+  - Still present? (No accidental deletions or overrides)
+  - Not degraded? (e.g., performance, security, behavior)
+  - New code doesn't contradict it?
+- If any requirement is at risk, stop and ask the user:
+  - "Does this break [spec requirement]? Should we update the spec or
+    change the approach?"
+- If spec was updated in Stage 2, verify the new code aligns with the updated
+  spec.
+
+**Output of Stage 3:** Go/no-go confirmation that the build is safe and
+spec-aligned. If no-go, return to Stage 2.
+
+### Stage 4 — Document
+
+Update the project's tracking files per `anthropic-skills:agentic-code`'s
+templates:
 
 ```
 [ ] AGENT_CONTEXT.md — "Last Changes", "Current State", "Next Steps"
 [ ] PROJECT_MAP.md   — any files added/removed/renamed
 [ ] CHANGELOG.md     — one line per logical change with date
+[ ] spec.md (or similar) — updated requirements/decisions if changed in Stage 2
 [ ] ARCHITECTURE.md  — if a pattern or decision changed
 [ ] DEPENDENCIES.md  — if a package was added or removed
 ```
 
 If these files don't exist yet, create them from `anthropic-skills:agentic-code`'s
-templates rather than leaving the project without them. If time is short,
-update `AGENT_CONTEXT.md` at minimum and say the rest is pending.
+templates. If time is short, update `AGENT_CONTEXT.md` and the spec at
+minimum.
 
-### Stage 4 — Git
+### Stage 5 — Git
 
 - Check for `git-instructions.md` at the project root; if present, follow it
   exactly.
 - If absent, ask the user for their git workflow (branching, commit message
   style, auto-push) and write `git-instructions.md` with the answer.
-- Stage only the files touched by this task (code + Stage 3 docs) — never a
+- Stage only the files touched by this task (code + Stage 4 docs) — never a
   blanket `git add -A`.
+- Include spec changes in the same commit (spec is code's sibling, not separate).
 - Follow the system's destructive-action rules: never force-push, never skip
-  hooks, confirm before pushing unless pre-authorized for this session.
+  hooks, confirm before pushing unless pre-authorized.
 
-## Failure Handling
+## Failure & Restart Handling
 
-- Stop the sequence at the failed stage.
-- State clearly which stage failed and why.
-- Ask the user: retry / adjust the plan / abort.
-- Only the user can authorize skipping a stage for a specific task — never
-  drop one by default to save time.
+- If any stage fails or blocks, stop immediately and report which stage and why.
+- Ask the user: retry this stage / adjust the spec (and re-validate) / abort.
+- **If spec changes during development (Stage 2), restart from Stage 1** to
+  re-validate all requirements against the updated spec before continuing.
+- Never drop a stage or the spec check to save time — the user can only
+  authorize exceptions explicitly.
