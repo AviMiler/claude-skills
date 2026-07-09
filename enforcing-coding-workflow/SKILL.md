@@ -13,7 +13,7 @@ description: >
 
 # Coding Workflow
 
-⚠️ Read First — also load `MY-agentic-code` for the tracking-file templates and
+⚠️ Read First — also load `anthropic-skills:agentic-code` for the tracking-file templates and
 code quality rules used in Stage 3.
 
 ## Core Rule
@@ -56,14 +56,14 @@ State what will be built and any assumptions made before moving to Stage 2.
 
 ### Stage 2 — Build
 
-- Follow the code quality rules from `MY-agentic-code` (file size, naming,
+- Follow the code quality rules from `anthropic-skills:agentic-code` (file size, naming,
   typing, error handling, no dead abstractions).
 - Keep the change scoped to what Stage 1 validated — no drive-by refactors.
 - Track every file created, modified, or deleted for Stage 3.
 
 ### Stage 3 — Document
 
-Update the project's tracking files per `MY-agentic-code`'s templates:
+Update the project's tracking files per `anthropic-skills:agentic-code`'s templates:
 
 ```
 [ ] AGENT_CONTEXT.md — "Last Changes", "Current State", "Next Steps"
@@ -73,7 +73,7 @@ Update the project's tracking files per `MY-agentic-code`'s templates:
 [ ] DEPENDENCIES.md  — if a package was added or removed
 ```
 
-If these files don't exist yet, create them from `MY-agentic-code`'s
+If these files don't exist yet, create them from `anthropic-skills:agentic-code`'s
 templates rather than leaving the project without them. If time is short,
 update `AGENT_CONTEXT.md` at minimum and say the rest is pending.
 

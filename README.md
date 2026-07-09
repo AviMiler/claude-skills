@@ -6,7 +6,6 @@ Personal Claude skill library — shared across claude.ai and Claude Code.
 
 | Skill | Description |
 |---|---|
-| [`agentic-code`](./agentic-code/SKILL.md) | Agent-ready code standards — mandatory for all dev work |
 | [`enforcing-coding-workflow`](./enforcing-coding-workflow/SKILL.md) | Mandatory 4-stage sequence for every coding task — validate → build → document → git |
 | [`plugin-dev`](./plugin-dev/SKILL.md) | Chrome Extension (MV3) + VS Code Extension development |
 | [`angular-21-modern`](./angular-21-modern/SKILL.md) | Modern Angular 21 with signals, zoneless, standalone components |
@@ -15,8 +14,6 @@ Personal Claude skill library — shared across claude.ai and Claude Code.
 
 ```
 claude-skills/
-├── agentic-code/
-│   └── SKILL.md
 ├── enforcing-coding-workflow/
 │   └── SKILL.md
 ├── plugin-dev/
@@ -41,8 +38,9 @@ git -C ~/.claude-skills pull
 
 ## Convention
 
-Every dev skill starts with a reference to `agentic-code`:
+Every dev skill starts with a reference to the official `anthropic-skills:agentic-code`
+marketplace skill (this repo no longer ships its own copy):
 
 ```
-⚠️ Read First — load agentic-code skill
+⚠️ Read First — load anthropic-skills:agentic-code skill
 ```
