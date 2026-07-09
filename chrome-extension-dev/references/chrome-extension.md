@@ -1,214 +1,200 @@
-# Chrome Extension Reference (Manifest V3)
+# Chrome Extension Reference (Manifest V3, Vanilla JavaScript)
 
-## manifest.json Structure
+## Minimal manifest.json
 
 ```json
 {
   "manifest_version": 3,
   "name": "My Extension",
   "version": "1.0.0",
-  "description": "...",
+  "description": "What this extension does",
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://*.example.com/*"],
   "background": {
-    "service_worker": "dist/background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://*.example.com/*"],
-      "js": ["dist/content.js"],
-      "run_at": "document_idle"
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
     }
   ],
   "action": {
-    "default_popup": "popup/index.html",
-    "default_icon": { "16": "icons/16.png", "48": "icons/48.png" }
+    "default_popup": "popup.html",
+    "default_title": "My Extension"
   },
-  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
-}
-```
-
-## Message Passing Patterns
-
-### Typed Message Bus (always use this pattern)
-
-```typescript
-// src/shared/messages.ts
-export type ExtensionMessage =
-  | { type: 'GET_TAB_INFO' }
-  | { type: 'TAB_INFO_RESPONSE'; payload: { url: string; title: string } }
-  | { type: 'SAVE_DATA'; payload: { key: string; value: unknown } };
-
-/**
- * Send a message to the background service worker.
- * @param message - Typed message object
- * @returns Promise resolving to the response
- */
-export async function sendToBackground<T>(message: ExtensionMessage): Promise<T> {
-  return chrome.runtime.sendMessage(message);
-}
-
-/**
- * Send a message to the active tab's content script.
- * @param tabId - Target tab ID
- * @param message - Typed message object
- */
-export async function sendToContent<T>(tabId: number, message: ExtensionMessage): Promise<T> {
-  return chrome.tabs.sendMessage(tabId, message);
-}
-```
-
-### Background — Receiving Messages
-
-```typescript
-// src/background/index.ts
-import { ExtensionMessage } from '../shared/messages';
-
-chrome.runtime.onMessage.addListener(
-  (message: ExtensionMessage, sender, sendResponse) => {
-    // Must return true if sendResponse will be called asynchronously
-    handleMessage(message, sender).then(sendResponse);
-    return true;
-  }
-);
-
-async function handleMessage(
-  message: ExtensionMessage,
-  sender: chrome.runtime.MessageSender
-): Promise<unknown> {
-  switch (message.type) {
-    case 'GET_TAB_INFO': {
-      const tab = await chrome.tabs.get(sender.tab!.id!);
-      return { url: tab.url, title: tab.title };
-    }
-    default:
-      console.error('[Background] Unhandled message type:', message.type);
-      return null;
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
   }
 }
 ```
 
-## Storage Wrapper Pattern
+## Service Worker (background.js)
 
-```typescript
-// src/shared/storage.ts
+Service workers run when needed (no DOM access):
 
-// Define all storage keys in one place — never use magic strings
-const STORAGE_KEYS = {
-  USER_SETTINGS: 'user_settings',
-  LAST_SYNC: 'last_sync',
-} as const;
+```javascript
+// Listen for messages from content script or popup
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'GET_DATA') {
+    chrome.storage.local.get('myData', (result) => {
+      sendResponse(result.myData);
+    });
+    return true; // Required for async sendResponse
+  }
+});
 
-export interface UserSettings {
-  theme: 'light' | 'dark';
-  autoSync: boolean;
-}
-
-/**
- * Get user settings from chrome.storage.local.
- * Returns default settings if none are saved.
- */
-export async function getUserSettings(): Promise<UserSettings> {
-  const result = await chrome.storage.local.get(STORAGE_KEYS.USER_SETTINGS);
-  return result[STORAGE_KEYS.USER_SETTINGS] ?? { theme: 'light', autoSync: false };
-}
-
-/**
- * Save user settings to chrome.storage.local.
- */
-export async function saveUserSettings(settings: UserSettings): Promise<void> {
-  await chrome.storage.local.set({ [STORAGE_KEYS.USER_SETTINGS]: settings });
-}
-```
-
-## Content Script Rules
-
-- Cannot use `chrome.tabs` API — must message background instead
-- Has access to `window` and `document` of the host page
-- Runs in isolated world by default (cannot access page's JS variables)
-- To communicate with page JS: use `window.postMessage` / `window.addEventListener('message')`
-
-```typescript
-// src/content/index.ts
-
-// Guard against double-injection
-if (!(window as any).__MY_EXTENSION_LOADED__) {
-  (window as any).__MY_EXTENSION_LOADED__ = true;
-  init();
-}
-
-function init() {
-  // Listen for messages from background
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    // handle messages...
-    return true;
-  });
-}
-```
-
-## Service Worker Constraints
-
-The background script is a service worker — it:
-- Has **no DOM** — no `window`, no `document`, no `localStorage`
-- May be **terminated at any time** — never store state in variables between events
-- Use `chrome.storage` for all persistence
-- Wakes up on events (messages, alarms, etc.)
-
-```typescript
-// WRONG — state lost when service worker sleeps
-let cachedData: string | null = null;
-
-// RIGHT — always read from storage
-async function getCachedData(): Promise<string | null> {
-  const result = await chrome.storage.local.get('cached_data');
-  return result['cached_data'] ?? null;
-}
-```
-
-## Permissions Guide
-
-Only request permissions you actually use. Declare in manifest:
-
-| Permission | When to use |
-|---|---|
-| `storage` | `chrome.storage.local` / `sync` |
-| `activeTab` | Access current tab on user action |
-| `tabs` | Access all tabs (use sparingly) |
-| `scripting` | Inject scripts programmatically |
-| `alarms` | Schedule periodic work in service worker |
-| `contextMenus` | Add right-click menu items |
-
-Host permissions (`host_permissions`) for specific domains are preferred over broad `<all_urls>`.
-
-## Build Setup (Vite — recommended)
-
-```typescript
-// vite.config.ts
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      input: {
-        background: resolve(__dirname, 'src/background/index.ts'),
-        content: resolve(__dirname, 'src/content/index.ts'),
-        popup: resolve(__dirname, 'src/popup/index.ts'),
-      },
-      output: {
-        entryFileNames: '[name].js',
-        format: 'iife', // Required for content scripts
-      },
-    },
-    outDir: 'dist',
-  },
+// Listen for tab updates
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') {
+    chrome.tabs.sendMessage(tabId, { type: 'PAGE_LOADED' });
+  }
 });
 ```
 
-## Debugging Tips
+## Content Script (content.js)
 
-- Background service worker: `chrome://extensions` → "Service Worker" link
-- Content script: DevTools of the target page
-- Popup: Right-click popup → "Inspect"
-- Storage: DevTools → Application → Extension Storage
+Runs in page context (has DOM access, isolated from page JS):
+
+```javascript
+// Guard against double-injection
+if (window.__myExtLoaded) return;
+window.__myExtLoaded = true;
+
+// Listen for messages from background
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'PAGE_LOADED') {
+    console.log('Background says page loaded');
+  }
+});
+
+// Send message to background
+chrome.runtime.sendMessage({ type: 'GET_DATA' }, (response) => {
+  console.log('Got data:', response);
+});
+
+// Communicate with page JS via window.postMessage
+window.postMessage({ type: 'FROM_EXTENSION', data: 'hello' }, '*');
+
+// Listen from page JS
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return;
+  if (event.data.type === 'FROM_PAGE') {
+    console.log('Page says:', event.data.data);
+  }
+});
+```
+
+## Popup (popup.html + popup.js)
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 300px; font-family: sans-serif; }
+    button { padding: 10px; width: 100%; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>My Extension</h2>
+  <button id="btnClick">Click Me</button>
+  <div id="result"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
+```
+
+```javascript
+// popup.js
+document.getElementById('btnClick').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'GET_DATA' }, (response) => {
+    document.getElementById('result').textContent = JSON.stringify(response);
+  });
+});
+```
+
+## Storage API
+
+Always use `chrome.storage`, never `localStorage`:
+
+```javascript
+// Save
+chrome.storage.local.set({ myKey: 'myValue' });
+
+// Read
+chrome.storage.local.get(['myKey'], (result) => {
+  console.log('Stored value:', result.myKey);
+});
+
+// Remove
+chrome.storage.local.remove(['myKey']);
+
+// Clear all
+chrome.storage.local.clear();
+```
+
+## Common Patterns
+
+### Message Flow: popup → background → content
+
+```javascript
+// popup.js
+chrome.runtime.sendMessage({ 
+  type: 'INJECT_SCRIPT',
+  script: 'alert("Hello!")' 
+}, response => console.log(response));
+
+// background.js
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'INJECT_SCRIPT') {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      chrome.tabs.sendMessage(tabs[0].id, msg, sendResponse);
+    });
+    return true;
+  }
+});
+
+// content.js
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'INJECT_SCRIPT') {
+    eval(msg.script); // Or use Function() for safety
+    sendResponse({ success: true });
+  }
+});
+```
+
+### Query Active Tab
+
+```javascript
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const activeTab = tabs[0];
+  console.log('Active tab URL:', activeTab.url);
+});
+```
+
+### Permission Checklist
+
+Only request what you need:
+
+- `storage` — Use chrome.storage.local/sync
+- `activeTab` — Access the current tab (requires user gesture)
+- `tabs` — Query/manage all tabs
+- `scripting` — Inject scripts dynamically
+- `alarms` — Schedule tasks in background
+- `contextMenus` — Add right-click menu items
+
+Host permissions (`host_permissions`) example:
+```json
+"host_permissions": ["https://example.com/*", "https://example.org/*"]
+```
+
+## Common Gotchas
+
+1. **Service worker sleeps** — never store data in variables. Always use storage.
+2. **Content script isolation** — cannot access page's `window` variables. Use `window.postMessage`.
+3. **Async operations** — return `true` from `onMessage` listener if calling `sendResponse` async.
+4. **No DOM in background** — use `chrome.tabs.executeScript` or `chrome.tabs.sendMessage` instead.
+5. **CSP restrictions** — inline `<script>` tags don't work; load from files only.
