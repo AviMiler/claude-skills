@@ -86,6 +86,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
  */
 ```
 
+## System Permissions — Strictly Limited
+
+⚠️ **This environment has very limited permissions.** Cannot:
+- Install software or packages (no NPM, Homebrew, apt, choco, etc.)
+- Run system commands that modify the computer
+- Change system settings or registry
+- Execute installers or setup files
+- Access protected system directories
+
+**This means all code must be:**
+- **Self-contained** — no external dependencies, no build steps
+- **Vanilla JavaScript** — runs directly in Chrome without compilation
+- **Files only** — just manifest.json + .js files, drag into Chrome, done
+
+If a task requires installation, compilation, or system changes, **stop and ask
+the user** — it cannot be done in this environment.
+
 ## Setup Checklist
 
 Before writing code:
@@ -95,3 +112,5 @@ Before writing code:
 4. Does it need persistent storage? (Yes/No)
 
 Write only the files that are actually needed.
+
+**All code is self-contained — zero dependencies, zero build tools, zero setup.**
